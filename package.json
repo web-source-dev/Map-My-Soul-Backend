@@ -1,0 +1,71 @@
+{
+  "name": "map-my-soul-backend",
+  "version": "1.0.0",
+  "description": "Secure backend for Map My Soul wellness application with anonymous quiz strategy",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "test": "jest",
+    "security-check": "npm audit && npm audit fix",
+    "generate-key": "node scripts/generate-encryption-key.js",
+    "test-connection": "node ../test-connection-comprehensive.js",
+    "seed": "node scripts/seed-data.js all",
+    "seed:services": "node scripts/seed-data.js services",
+    "seed:products": "node scripts/seed-data.js products",
+    "seed:podcasts": "node scripts/seed-data.js podcasts"
+  },
+  "keywords": [
+    "wellness",
+    "quiz",
+    "anonymous",
+    "security",
+    "encryption",
+    "hipaa-compliant"
+  ],
+  "author": "Map My Soul Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "compression": "^1.7.4",
+    "express-rate-limit": "^6.10.0",
+    "joi": "^17.9.2",
+    "dotenv": "^16.3.1",
+    "crypto": "^1.0.1",
+    "nodemailer": "^6.9.4",
+    "express-validator": "^7.0.1",
+    "express-session": "^1.17.3",
+    "connect-mongo": "^5.0.0",
+    "uuid": "^9.0.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "hpp": "^0.2.3",
+    "express-brute": "^1.0.1",
+    "express-brute-redis": "^0.0.1",
+    "redis": "^4.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.6.2",
+    "supertest": "^6.3.3",
+    "eslint": "^8.47.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.28.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/map-my-soul-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/map-my-soul-backend/issues"
+  },
+  "homepage": "https://github.com/your-org/map-my-soul-backend#readme"
+}
