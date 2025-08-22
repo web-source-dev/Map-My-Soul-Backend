@@ -144,8 +144,8 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
-      'https://yourdomain.com', // Replace with your domain
-      'https://www.yourdomain.com'
+      'https://mapmysoul.rtnglobal.site', // Replace with your domain
+      'https://www.mapmysoul.rtnglobal.site'
     ];
     
     if (allowedOrigins.indexOf(origin) !== -1) {
