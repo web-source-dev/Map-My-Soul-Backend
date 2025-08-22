@@ -22,10 +22,21 @@ const formatUserResponse = (userAuth, userProfile = null) => {
   const isUser = userAuth.role === 'user';
   const isAdmin = userAuth.role === 'admin';
   
+  // Extract firstName and lastName from displayName if available
+  let firstName = '';
+  let lastName = '';
+  if (userProfile && userProfile.displayName) {
+    const nameParts = userProfile.displayName.split(' ');
+    firstName = nameParts[0] || '';
+    lastName = nameParts.slice(1).join(' ') || '';
+  }
+  
   return {
     id: userAuth._id,
     email: userAuth.email,
     role: userAuth.role,
+    firstName,
+    lastName,
     isAuthenticated,
     isUser,
     isAdmin,
@@ -156,10 +167,14 @@ router.post('/login', async (req, res) => {
       role: userAuth.role
     });
 
+    const userResponse = formatUserResponse(userAuth, userProfile);
+    console.log('Login response - User data:', userResponse);
+    console.log('Login response - Avatar:', userResponse.avatar);
+    
     res.json({
       message: 'Login successful',
       token,
-      user: formatUserResponse(userAuth, userProfile)
+      user: userResponse
     });
 
   } catch (error) {
@@ -309,7 +324,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Update user profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { displayName, avatar } = req.body;
+    const { displayName, avatar, preferences, wellnessGoals } = req.body;
     const { UserProfile } = getModels();
 
     const userProfile = await UserProfile.findOne({ userId: req.user.userId });
@@ -317,18 +332,46 @@ router.put('/profile', authenticateToken, async (req, res) => {
       return res.status(404).json({ message: 'User profile not found' });
     }
 
-    // Update allowed fields
-    if (displayName !== undefined) userProfile.displayName = displayName;
-    if (avatar !== undefined) userProfile.avatar = avatar;
+    // Track what fields were actually updated
+    const updatedFields = {};
+    const originalProfile = userProfile.toObject();
 
-    // Add activity log
-    userProfile.activityHistory.push({
-      action: 'profile_updated',
-      timestamp: new Date(),
-      details: { displayName, avatar }
-    });
+    // Update only the fields that are provided and have changed
+    if (displayName !== undefined && displayName !== userProfile.displayName) {
+      userProfile.displayName = displayName;
+      updatedFields.displayName = displayName;
+    }
+    
+    if (avatar !== undefined && avatar !== userProfile.avatar) {
+      userProfile.avatar = avatar;
+      updatedFields.avatar = avatar;
+    }
+    
+    if (preferences !== undefined) {
+      userProfile.preferences = { ...userProfile.preferences, ...preferences };
+      updatedFields.preferences = preferences;
+    }
+    
+    if (wellnessGoals !== undefined) {
+      userProfile.wellnessGoals = wellnessGoals;
+      updatedFields.wellnessGoals = wellnessGoals;
+    }
 
-    await userProfile.save();
+    // Only save if there are actual changes
+    if (Object.keys(updatedFields).length > 0) {
+      // Add activity log with only the changed fields
+      userProfile.activityHistory.push({
+        action: 'profile_updated',
+        timestamp: new Date(),
+        details: updatedFields
+      });
+
+      await userProfile.save();
+      
+      console.log('Profile updated with fields:', updatedFields);
+    } else {
+      console.log('No profile changes detected');
+    }
 
     res.json({
       message: 'Profile updated successfully',
