@@ -26,6 +26,9 @@ const servicesRoutes = require('./routes/services');
 const productsRoutes = require('./routes/products');
 const podcastsRoutes = require('./routes/podcasts');
 const bookingsRoutes = require('./routes/bookings');
+const contactRoutes = require('./routes/contact');
+const newsletterRoutes = require('./routes/newsletter');
+const recommendationsRoutes = require('./routes/recommendations');
 
 const app = express();
 
@@ -76,6 +79,9 @@ app.use('/api/services', servicesRoutes);
 app.use('/api/products', productsRoutes);
 app.use('/api/podcasts', podcastsRoutes);
 app.use('/api/bookings', bookingsRoutes);
+app.use('/api/contact', contactRoutes);
+app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/recommendations', recommendationsRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

@@ -20,50 +20,6 @@ const userProfileSchema = new mongoose.Schema({
         default: null
     },
     
-    // User preferences (non-PHI)
-    preferences: {
-        theme: {
-            type: String,
-            enum: ['light', 'dark', 'auto'],
-            default: 'auto'
-        },
-        notifications: {
-            email: { type: Boolean, default: true },
-            push: { type: Boolean, default: true },
-            sms: { type: Boolean, default: false }
-        },
-        language: {
-            type: String,
-            default: 'en',
-            enum: ['en', 'es', 'fr', 'de']
-        },
-        timezone: {
-            type: String,
-            default: 'UTC'
-        }
-    },
-    
-    // Wellness preferences (non-PHI)
-    wellnessGoals: [{
-        type: String,
-        enum: ['stress_reduction', 'better_sleep', 'energy_boost', 'emotional_balance', 'spiritual_growth', 'physical_health', 'mindfulness', 'creativity']
-    }],
-    
-    // Service preferences (non-PHI)
-    favoritePractitioners: [{
-        practitionerId: String,
-        name: String,
-        specialty: String,
-        rating: Number
-    }],
-    
-    savedServices: [{
-        serviceId: String,
-        name: String,
-        category: String,
-        savedAt: { type: Date, default: Date.now }
-    }],
-    
     // Activity history (non-PHI)
     activityHistory: [{
         action: {
@@ -126,24 +82,6 @@ const userProfileSchema = new mongoose.Schema({
         }
     }],
     
-    // Marketing preferences (GDPR compliant)
-    marketingConsent: {
-        email: { type: Boolean, default: false },
-        sms: { type: Boolean, default: false },
-        thirdParty: { type: Boolean, default: false },
-        lastUpdated: { type: Date, default: Date.now }
-    },
-    
-    // Account settings
-    accountSettings: {
-        twoFactorEnabled: { type: Boolean, default: false },
-        privacyLevel: {
-            type: String,
-            enum: ['public', 'friends', 'private'],
-            default: 'private'
-        }
-    }
-    
 }, { 
     timestamps: true,
     // Ensure no PHI is stored
@@ -152,8 +90,6 @@ const userProfileSchema = new mongoose.Schema({
 
 // Indexes for performance
 userProfileSchema.index({ userId: 1 });
-userProfileSchema.index({ 'preferences.theme': 1 });
-userProfileSchema.index({ 'wellnessGoals': 1 });
 userProfileSchema.index({ 'activityHistory.timestamp': -1 });
 
 // Create and export the model

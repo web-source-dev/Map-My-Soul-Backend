@@ -70,20 +70,6 @@ const userAuthSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
-    loginCount: {
-        type: Number,
-        default: 0
-    },
-    
-    // Security features
-    failedLoginAttempts: {
-        type: Number,
-        default: 0
-    },
-    accountLockedUntil: {
-        type: Date,
-        default: null
-    }
     
 }, { 
     timestamps: true,
@@ -97,26 +83,57 @@ const userAuthSchema = new mongoose.Schema({
 userAuthSchema.pre('save', async function(next) {
     try {
         // Only hash the password if it has been modified (or is new)
-        if (!this.isModified('password')) return next();
+        if (!this.isModified('password')) {
+            return next();
+        }
         
         // Hash the password
         this.password = await hashPassword(this.password);
+        
         next();
     } catch (error) {
+        console.error('Pre-save middleware error:', error);
         next(error);
     }
 });
 
 // Instance method to verify password
 userAuthSchema.methods.verifyPassword = async function(candidatePassword) {
-    return await verifyPassword(candidatePassword, this.password);
+    try {
+        const result = await verifyPassword(candidatePassword, this.password);
+        return result;
+    } catch (error) {
+        console.error('Password verification error:', error);
+        return false;
+    }
 };
 
 // Instance method to update password
 userAuthSchema.methods.updatePassword = async function(newPassword) {
-    this.password = await hashPassword(newPassword);
+    // Set the plain password - the pre-save middleware will hash it
+    this.password = newPassword;
+    
+    // Clear any failed login attempts and account locks
     this.failedLoginAttempts = 0;
     this.accountLockedUntil = null;
+    
+    // Clear reset tokens
+    this.resetToken = null;
+    this.resetTokenExpires = null;
+    
+    // Mark password as modified to ensure it gets hashed by pre-save middleware
+    this.markModified('password');
+    
+    // Save normally - pre-save middleware will hash the password
+    const result = await this.save();
+        
+    return result;
+};
+
+// Instance method to clear reset tokens
+userAuthSchema.methods.clearResetTokens = async function() {
+    this.resetToken = null;
+    this.resetTokenExpires = null;
     return await this.save();
 };
 

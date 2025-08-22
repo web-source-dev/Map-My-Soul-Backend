@@ -161,4 +161,83 @@ router.get('/service/:serviceId/availability', async (req, res) => {
   }
 });
 
+// Get user bookings
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    const { Booking } = getModels();
+    
+    const bookings = await Booking.find({ 
+      customerId: req.user.userId 
+    }).sort({ bookingDate: -1, bookingTime: -1 });
+
+    res.json({
+      bookings: bookings.map(booking => ({
+        id: booking._id,
+        serviceName: booking.serviceName,
+        servicePrice: booking.servicePrice,
+        serviceProviderName: booking.serviceProviderName,
+        bookingDate: booking.bookingDate,
+        bookingTime: booking.bookingTime,
+        sessionDuration: booking.sessionDuration,
+        sessionType: booking.sessionType,
+        sessionPlatform: booking.sessionPlatform,
+        status: booking.status,
+        paymentStatus: booking.paymentStatus,
+        specialRequests: booking.specialRequests,
+        createdAt: booking.createdAt,
+        confirmedAt: booking.confirmedAt,
+        completedAt: booking.completedAt,
+        cancelledAt: booking.cancelledAt
+      }))
+    });
+
+  } catch (error) {
+    console.error('Get user bookings error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Cancel a booking
+router.put('/:bookingId/cancel', authenticateToken, async (req, res) => {
+  try {
+    const { Booking } = getModels();
+    
+    const booking = await Booking.findOne({ 
+      _id: req.params.bookingId,
+      customerId: req.user.userId 
+    });
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ message: 'Booking is already cancelled' });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(400).json({ message: 'Cannot cancel completed booking' });
+    }
+
+    booking.status = 'cancelled';
+    booking.cancelledAt = new Date();
+    booking.cancelledBy = 'customer';
+    
+    await booking.save();
+
+    res.json({
+      message: 'Booking cancelled successfully',
+      booking: {
+        id: booking._id,
+        status: booking.status,
+        cancelledAt: booking.cancelledAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Cancel booking error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 module.exports = router;

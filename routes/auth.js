@@ -145,8 +145,7 @@ router.post('/login', async (req, res) => {
     // Get user profile
     const userProfile = await UserProfile.findOne({ userId: userAuth._id });
 
-    // Update login count and last login
-    userAuth.loginCount += 1;
+    // Update last login
     userAuth.lastLoginAt = new Date();
     await userAuth.save();
 
@@ -194,9 +193,11 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour
 
+
     userAuth.resetToken = resetToken;
     userAuth.resetTokenExpires = resetTokenExpires;
     await userAuth.save();
+
 
     // Send password reset email
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
@@ -230,17 +231,32 @@ router.post('/reset-password', async (req, res) => {
     const { resetToken, newPassword } = req.body;
     const { UserAuth } = getModels();
 
-    const userAuth = await UserAuth.findOne({
-      resetToken,
+    // Find all users with non-expired reset tokens and check each one
+    const users = await UserAuth.find({
       resetTokenExpires: { $gt: Date.now() }
     });
+
+    let userAuth = null;
+    for (const user of users) {
+      // Compare the plain resetToken with the decrypted token from database
+      if (user.resetToken === resetToken) {
+        userAuth = user;
+        break;
+      }
+    }
 
     if (!userAuth) {
       return res.status(400).json({ message: 'Invalid or expired reset token' });
     }
 
+    // Clear the reset token after successful use
+    userAuth.resetToken = null;
+    userAuth.resetTokenExpires = null;
+
+    
     // Update password using the model method
     await userAuth.updatePassword(newPassword);
+    
 
     res.json({ message: 'Password reset successful' });
 
@@ -293,7 +309,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
 // Update user profile
 router.put('/profile', authenticateToken, async (req, res) => {
   try {
-    const { displayName, preferences, wellnessGoals } = req.body;
+    const { displayName, avatar } = req.body;
     const { UserProfile } = getModels();
 
     const userProfile = await UserProfile.findOne({ userId: req.user.userId });
@@ -303,8 +319,14 @@ router.put('/profile', authenticateToken, async (req, res) => {
 
     // Update allowed fields
     if (displayName !== undefined) userProfile.displayName = displayName;
-    if (preferences !== undefined) userProfile.preferences = { ...userProfile.preferences, ...preferences };
-    if (wellnessGoals !== undefined) userProfile.wellnessGoals = wellnessGoals;
+    if (avatar !== undefined) userProfile.avatar = avatar;
+
+    // Add activity log
+    userProfile.activityHistory.push({
+      action: 'profile_updated',
+      timestamp: new Date(),
+      details: { displayName, avatar }
+    });
 
     await userProfile.save();
 
@@ -315,6 +337,76 @@ router.put('/profile', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Update profile error:', error);
     res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Change password
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const { UserAuth } = getModels();
+
+    const userAuth = await UserAuth.findById(req.user.userId);
+    if (!userAuth) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isValidPassword = await userAuth.verifyPassword(currentPassword);
+    if (!isValidPassword) { 
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    // Clear any existing reset tokens when password is changed
+    userAuth.resetToken = null;
+    userAuth.resetTokenExpires = null;
+
+    // Update password using the model method
+    await userAuth.updatePassword(newPassword);
+
+    res.json({
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+// Upload image to Cloudinary
+router.post('/upload-image', authenticateToken, async (req, res) => {
+  try {
+    const { imageData } = req.body; // Base64 image data
+    
+    if (!imageData) {
+      return res.status(400).json({ message: 'Image data is required' });
+    }
+
+    // Cloudinary configuration
+    const cloudinary = require('cloudinary').v2;
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET
+    });
+
+    // Upload to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(imageData, {
+      folder: 'user-avatars',
+      transformation: [
+        { width: 400, height: 400, crop: 'fill' },
+        { quality: 'auto' }
+      ]
+    });
+
+    res.json({
+      message: 'Image uploaded successfully',
+      imageUrl: uploadResult.secure_url,
+      publicId: uploadResult.public_id
+    });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({ message: 'Failed to upload image' });
   }
 });
 
